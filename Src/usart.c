@@ -6,6 +6,9 @@
  */
 
 #include "stm32f4xx.h"
+#include "usart.h"
+#include "FreeRTOS.h"
+#include "task.h"
 
 void USART2_Init(void){
 
@@ -21,11 +24,30 @@ GPIOA->AFR[0] |= (0x77U << 8);
 GPIOA->OSPEEDR &= ~(3U << 4);
 GPIOA->OSPEEDR |= (2U << 4); // HIGH - 0b10
 
-USART2->BRR = (138U << 4) | (14U << 0);
+USART2->BRR = (8U << 4) | (11U << 0);
 
 USART2->CR1 |= (1U << 13) | (1U << 3) | (1U << 2); // USARTEN [13] : TE [3] : RE [2]
 }
 
+void USART2_Write(int ch){
 
+	while(!(USART2->SR & (1U << 7))){
+
+	}
+
+	USART2->DR = ch;
+}
+
+void vUSART2_Task(void *pvParameters){
+	 while(1){
+		  USART2_Write('A');
+
+		 vTaskDelay(pdMS_TO_TICKS(300));
+	  }
+}
+
+void USART2_Task_Init(void){
+	xTaskCreate(vUSART2_Task, "vUSART2_Task", 256, NULL, 1, NULL);
+}
 
 

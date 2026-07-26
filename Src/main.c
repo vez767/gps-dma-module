@@ -17,12 +17,19 @@
  */
 
 #include "stm32f4xx.h"
-
-#include <stdint.h>
-
 #include "fpu_init.h"
+#include "usart.h"
+#include "FreeRTOS.h"
+#include "task.h"
 
 int main(void)
 {
   FPU_Init();
+  USART2_Init();
+
+  USART2_Task_Init();
+  vTaskStartScheduler();
+
+  while(1){}
+
 }
