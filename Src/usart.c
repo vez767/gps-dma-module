@@ -10,13 +10,15 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+volatile uint8_t gps_rx_buffer[100];
+
 void USART2_Init(void){
 
 RCC->APB1ENR |= (1U << 17); // USART 2
 RCC->AHB1ENR |= (1U << 0);	// GPIOAEN
 
 GPIOA->MODER &= ~(0xFU << 4);//  CLEAR PA2 & 3
-GPIOA->MODER |= (0xAU << 4); // PA2 & PA3 - AF (1010)
+GPIOA->MODER |= (0xAU << 4); // PA2 & PA3 - AF (0b1010)
 
 GPIOA->AFR[0] &= ~(0xFFU << 8);
 GPIOA->AFR[0] |= (0x77U << 8);
@@ -38,6 +40,42 @@ void USART2_Write(int ch){
 	USART2->DR = ch;
 }
 
+/*
+ * Requirement: Configure USART6 to receive variable-length NMEA GPS sentences.
+ * Constraint: Offload CPU overhead by linking Rx to DMA2 Stream 1 in circular mode.
+ */
+void GPS_USART6_Init(void){
+
+	RCC->AHB1ENR |= (1U << 0) | (1U << 22); // GPIOAEN | DMA2EN
+	RCC->APB2ENR |= (1U << 5); //USART6EN
+
+	GPIOA->MODER &= ~(3U << 24);//  CLEAR PA12
+	GPIOA->MODER |= (2U << 24); // PA12 - AF (0b10)
+
+	GPIOA->AFR[1] &= ~(0xFU << 16); //Rx
+	GPIOA->AFR[1] |= (0x8U << 16);
+
+	DMA2_Stream1->CR |= (1U << 8) | (1U << 10) | (5U << 25); // MINC | Circular mode | Channel; 5
+
+	DMA_Transfer((uint32_t) &(USART6->DR),(uint32_t) &(gps_rx_buffer[0]), 100);
+
+	USART6->BRR = (104U << 4) | (3U << 0);
+
+	USART6->CR1 |= (1U << 13) | (1U << 2); // USARTEN [13]  | RE [2]
+	USART6->CR3 |= (1U << 6);
+
+
+}
+
+void DMA_Transfer(uint32_t source_dr, uint32_t dest_array, uint32_t buffer_size){
+
+	DMA2_Stream1->M0AR = dest_array;
+	DMA2_Stream1->PAR = source_dr;
+	DMA2_Stream1->NDTR = buffer_size;
+
+	DMA2_Stream1->CR |= (1U << 0);
+}
+
 void vUSART2_Task(void *pvParameters){
 	 while(1){
 		  USART2_Write('A');
@@ -49,5 +87,6 @@ void vUSART2_Task(void *pvParameters){
 void USART2_Task_Init(void){
 	xTaskCreate(vUSART2_Task, "vUSART2_Task", 256, NULL, 1, NULL);
 }
+
 
 

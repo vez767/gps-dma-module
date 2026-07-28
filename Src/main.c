@@ -26,6 +26,7 @@ int main(void)
 {
   FPU_Init();
   USART2_Init();
+  GPS_USART6_Init();
 
   USART2_Task_Init();
   vTaskStartScheduler();
