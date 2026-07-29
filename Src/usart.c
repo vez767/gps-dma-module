@@ -11,6 +11,7 @@
 #include "task.h"
 
 volatile uint8_t gps_rx_buffer[100];
+extern TaskHandle_t xGpsTaskHandle;
 
 void USART2_Init(void){
 
@@ -61,9 +62,11 @@ void GPS_USART6_Init(void){
 
 	USART6->BRR = (104U << 4) | (3U << 0);
 
-	USART6->CR1 |= (1U << 13) | (1U << 2); // USARTEN [13]  | RE [2]
+	USART6->CR1 |= (1U << 13) | (1U << 4) | (1U << 2); // USARTEN [13] | IDLEIE[4] | RE [2]
 	USART6->CR3 |= (1U << 6);
 
+	NVIC_SetPriority(USART6_IRQn, 5);
+	NVIC_EnableIRQ(USART6_IRQn);
 
 }
 
@@ -78,14 +81,23 @@ void DMA_Transfer(uint32_t source_dr, uint32_t dest_array, uint32_t buffer_size)
 
 void vUSART2_Task(void *pvParameters){
 	 while(1){
-		  USART2_Write('A');
+		  ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-		 vTaskDelay(pdMS_TO_TICKS(300));
+		  for(uint8_t i = 0; i < 100; i++){
+
+			  if(gps_rx_buffer[i] != '\0') {
+				  USART2_Write(gps_rx_buffer[i]);
+			  }
+
+		  }
+		  USART2_Write('\r');
+		  USART2_Write('\n');
+
 	  }
 }
 
 void USART2_Task_Init(void){
-	xTaskCreate(vUSART2_Task, "vUSART2_Task", 256, NULL, 1, NULL);
+	xTaskCreate(vUSART2_Task, "vUSART2_Task", 256, NULL, 1, &xGpsTaskHandle);
 }
 
 

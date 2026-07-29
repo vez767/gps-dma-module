@@ -21,16 +21,37 @@
 #include "usart.h"
 #include "FreeRTOS.h"
 #include "task.h"
+#include "semphr.h"
+
+TaskHandle_t xGpsTaskHandle = NULL;
 
 int main(void)
 {
   FPU_Init();
   USART2_Init();
   GPS_USART6_Init();
-
   USART2_Task_Init();
-  vTaskStartScheduler();
 
-  while(1){}
+  if(xGpsTaskHandle != NULL){
+	  vTaskStartScheduler();
 
+  }else{
+	  while(1){}
+  }
+
+
+}
+
+void USART6_IRQHandler(void){
+
+	if(USART6->SR & USART_SR_IDLE){
+
+		volatile uint32_t compulsory_read = USART6->DR;
+		(void)compulsory_read;
+
+		BaseType_t xHigherPriorityTask = pdFALSE;
+		vTaskNotifyGiveFromISR(xGpsTaskHandle, &xHigherPriorityTask);
+		portYIELD_FROM_ISR(xHigherPriorityTask);
+
+	}
 }
