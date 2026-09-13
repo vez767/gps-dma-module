@@ -23,6 +23,7 @@
 #include "task.h"
 #include "semphr.h"
 
+
 TaskHandle_t xGpsTaskHandle = NULL;
 
 int main(void)
