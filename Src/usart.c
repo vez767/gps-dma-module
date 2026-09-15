@@ -10,7 +10,9 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-volatile uint8_t gps_rx_buffer[100];
+#define RX_BUFFER_SIZE	512
+
+volatile uint8_t gps_rx_buffer[RX_BUFFER_SIZE];
 extern TaskHandle_t xGpsTaskHandle;
 
 void USART2_Init(void){
@@ -58,7 +60,7 @@ void GPS_USART6_Init(void){
 
 	DMA2_Stream1->CR |= (1U << 8) | (1U << 10) | (5U << 25); // MINC | Circular mode | Channel; 5
 
-	DMA_Transfer((uint32_t) &(USART6->DR),(uint32_t) &(gps_rx_buffer[0]), 100);
+	DMA_Transfer((uint32_t) &(USART6->DR),(uint32_t) &(gps_rx_buffer[0]), RX_BUFFER_SIZE);
 
 	USART6->BRR = (104U << 4) | (3U << 0);
 
@@ -80,21 +82,36 @@ void DMA_Transfer(uint32_t source_dr, uint32_t dest_array, uint32_t buffer_size)
 }
 
 void vUSART2_Task(void *pvParameters){
+	static uint16_t tail = 0;
+	static char parse_buffer[100];
+	static uint8_t parse_index = 0;
+
 	 while(1){
 		  ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-		  for(uint8_t i = 0; i < 100; i++){
+		  uint16_t head = (RX_BUFFER_SIZE - DMA2_Stream1->NDTR) % RX_BUFFER_SIZE;
 
-			  if(gps_rx_buffer[i] != '\0') {
-				  USART2_Write(gps_rx_buffer[i]);
-			  }
+		  while (tail != head){
+			  char c = gps_rx_buffer[tail];
+		      tail = (tail + 1) % RX_BUFFER_SIZE;
 
+		      if (c == '$') parse_index = 0;
+
+		      if (parse_index < 99) {
+		         parse_buffer[parse_index++] = c;
+		       }
+
+		      if (c == '\n') {
+		    	  parse_buffer[parse_index] = '\0';
+
+		    	  for(uint8_t i = 0; parse_buffer[i] != '\0'; i++) {
+		    		  USART2_Write(parse_buffer[i]);
+		    	  }
+		      }
 		  }
-		  USART2_Write('\r');
-		  USART2_Write('\n');
-
-	  }
+	 }
 }
+
 
 void USART2_Task_Init(void){
 	xTaskCreate(vUSART2_Task, "vUSART2_Task", 256, NULL, 1, &xGpsTaskHandle);
