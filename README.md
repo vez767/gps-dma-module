@@ -1,7 +1,7 @@
 # NEO-6M GPS Driver: CMSIS & FreeRTOS Integration
 
 
-> <video src="https://github.com/user-attachments/assets/6a7020ae-e540-4358-8fcb-d628fe2938e5" width="600" controls></video>
+https://github.com/user-attachments/assets/6a7020ae-e540-4358-8fcb-d628fe2938e5
 
 This module implements a non-blocking, register-level driver for the NEO-6M GPS module using an STM32F4 microcontroller. It marks the transition from raw register manipulation to industry-standard CMSIS architecture, utilizing Direct Memory Access (DMA) and FreeRTOS for efficient telemetry acquisition.
 
